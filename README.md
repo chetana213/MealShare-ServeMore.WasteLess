@@ -7,6 +7,20 @@ The platform allows **donors to offer surplus food**, **receivers to claim avail
 > **Good food deserves another table.**
 
 ---
+# 🍲 MealShare – Serve More. Waste Less.
+
+> A community-focused platform built to make surplus food accessible before it goes to waste.
+
+### 👥 Team
+
+| Roll Number | Name                 |
+| ----------- | -------------------- |
+| 24WH1A05P5  | J. Chetana           |
+| 24WH1A05P54 | D. Lakshmi Aishwarya |
+| 24WH1A05K9  | K. Alekhya           |
+| 24WH1A05L3  | K. Latha             |
+
+---
 
 ## 🌱 Problem Statement
 
@@ -136,41 +150,52 @@ The application is designed to work across:
 The interface uses a clean, accessible design focused on usability rather than unnecessary visual complexity.
 
 ---
+## 🏗️ System Architecture
 
-# 🏗️ System Architecture
+```mermaid
+flowchart TB
 
-```text
-                    ┌──────────────────────┐
-                    │      User Browser    │
-                    │   React + Vite UI    │
-                    └──────────┬───────────┘
-                               │
-                               │ HTTPS
-                               ▼
-                    ┌──────────────────────┐
-                    │        Nginx         │
-                    │ Reverse Proxy + SSL  │
-                    └──────────┬───────────┘
-                               │
-                 ┌─────────────┴─────────────┐
-                 │                           │
-                 ▼                           ▼
-       ┌──────────────────┐        ┌─────────────────┐
-       │ React Static App │        │ Node.js /       │
-       │      /dist       │        │ Express API     │
-       └──────────────────┘        └────────┬────────┘
-                                            │
-                                            │ SQL
-                                            ▼
-                                   ┌─────────────────┐
-                                   │   PostgreSQL    │
-                                   │    Database     │
-                                   └─────────────────┘
+    U["Users<br/>Donor / Receiver"]
 
-                    AWS EC2 Ubuntu Server
+    DNS["DuckDNS<br/>mealshare-servemorewasteless.duckdns.org"]
+
+    subgraph AWS["AWS EC2 — Ubuntu"]
+        N["Nginx<br/>HTTPS + Reverse Proxy"]
+
+        FE["React + Vite<br/>Frontend"]
+
+        BE["Node.js + Express<br/>Backend API"]
+
+        DB[("PostgreSQL<br/>Database")]
+
+        AUTH["Authentication<br/>JWT + Roles"]
+        FOOD["Food Management<br/>Offer • Claim • Complete"]
+        ANALYTICS["Impact Analytics"]
+        EXP["Expiration Service"]
+
+        N -->|"Serves"| FE
+        N -->|"/api/*"| BE
+        BE --> DB
+
+        BE --> AUTH
+        BE --> FOOD
+        BE --> ANALYTICS
+        BE --> EXP
+
+        AUTH --> DB
+        FOOD --> DB
+        ANALYTICS --> DB
+        EXP --> DB
+    end
+
+    GH["GitHub Repository"]
+
+    U -->|"HTTPS"| DNS
+    DNS --> N
+    FE -->|"REST API • Axios"| N
+    GH -->|"Git Pull / Deployment"| AWS
 ```
 
----
 
 # 🧩 Project Modules
 
@@ -835,14 +860,4 @@ Potential future improvements include:
 
 ---
 
-# 👩‍💻 Team
-
-**MealShare – Serve More. Waste Less.**
-
-A community-focused platform built to make surplus food accessible before it goes to waste.
-24WH1A05P5-J.Chetana
-24WH1A05P54-D.Lakshmi Aishwarya
-24WH1A05K9-K.Alekhya
-24WH1A05L3-K.Latha
----
 
