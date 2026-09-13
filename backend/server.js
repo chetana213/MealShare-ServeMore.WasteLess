@@ -13,6 +13,7 @@ const { startExpirationJob } = require('./services/expirationService');
 const { notFound, errorHandler } = require('./middleware/errorMiddleware');
 
 const app = express();
+app.disable("etag");
 const port = process.env.PORT || 5000;
 
 app.use(

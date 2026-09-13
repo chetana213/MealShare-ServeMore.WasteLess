@@ -156,5 +156,129 @@ async function claimFood(req, res, next) {
     if (client) client.release();
   }
 }
+async function completePickup(req, res, next) {
+  const foodId = Number(req.params.id);
+  const submittedCode = String(req.body?.pickupCode || '').trim().toUpperCase();
 
-module.exports = { getFoods, getFoodById, createFood, claimFood };
+  if (!Number.isInteger(foodId) || foodId <= 0) {
+    return res.status(400).json({
+      message: 'A valid food ID is required.',
+    });
+  }
+
+  if (!submittedCode) {
+    return res.status(400).json({
+      message: 'Pickup code is required.',
+    });
+  }
+
+  const client = await pool.connect();
+
+  try {
+    await client.query('BEGIN');
+
+    const foodResult = await client.query(
+      `SELECT
+         foods.*,
+         claims.id AS claim_id,
+         claims.claimant_id,
+         claims.pickup_code,
+         claims.completed_at
+       FROM foods
+       JOIN claims ON claims.food_id = foods.id
+       WHERE foods.id = $1
+       FOR UPDATE`,
+      [foodId]
+    );
+
+    if (foodResult.rowCount === 0) {
+      await client.query('ROLLBACK');
+
+      return res.status(404).json({
+        message: 'Food listing or claim not found.',
+      });
+    }
+
+    const food = foodResult.rows[0];
+
+    if (food.status === 'COMPLETED') {
+      await client.query('ROLLBACK');
+
+      return res.status(409).json({
+        message: 'This pickup has already been completed.',
+      });
+    }
+
+    if (food.status !== 'CLAIMED') {
+      await client.query('ROLLBACK');
+
+      return res.status(409).json({
+        message: `Pickup cannot be completed because the food status is ${food.status}.`,
+      });
+    }
+
+    if (food.claimant_id !== Number(req.user.id)) {
+      await client.query('ROLLBACK');
+
+      return res.status(403).json({
+        message: 'Only the claimant who reserved this food can complete the pickup.',
+      });
+    }
+
+    if (food.pickup_code !== submittedCode) {
+      await client.query('ROLLBACK');
+
+      return res.status(400).json({
+        message: 'Invalid pickup verification code.',
+      });
+    }
+
+    const updateResult = await client.query(
+      `UPDATE foods
+       SET status = 'COMPLETED',
+           updated_at = CURRENT_TIMESTAMP
+       WHERE id = $1
+         AND status = 'CLAIMED'
+       RETURNING id, status, updated_at`,
+      [foodId]
+    );
+
+    if (updateResult.rowCount === 0) {
+      await client.query('ROLLBACK');
+
+      return res.status(409).json({
+        message: 'Pickup could not be completed.',
+      });
+    }
+
+    await client.query(
+      `UPDATE claims
+       SET completed_at = CURRENT_TIMESTAMP
+       WHERE food_id = $1`,
+      [foodId]
+    );
+
+    await client.query('COMMIT');
+
+    return res.json({
+      message: 'Pickup completed successfully.',
+      food: {
+        id: updateResult.rows[0].id,
+        status: updateResult.rows[0].status.toLowerCase(),
+        completedAt: updateResult.rows[0].updated_at,
+      },
+    });
+  } catch (error) {
+    await client.query('ROLLBACK').catch(() => {});
+    return next(error);
+  } finally {
+    client.release();
+  }
+}
+module.exports = {
+  getFoods,
+  getFoodById,
+  createFood,
+  claimFood,
+  completePickup,
+};
