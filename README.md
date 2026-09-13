@@ -6,11 +6,6 @@ The platform allows **donors to offer surplus food**, **receivers to claim avail
 
 > **Good food deserves another table.**
 
----
-# 🍲 MealShare – Serve More. Waste Less.
-
-> A community-focused platform built to make surplus food accessible before it goes to waste.
-
 ### 👥 Team
 
 | Roll Number | Name                 |
