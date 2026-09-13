@@ -1,0 +1,54 @@
+CREATE TABLE IF NOT EXISTS users (
+  id SERIAL PRIMARY KEY,
+  name VARCHAR(100) NOT NULL,
+  email VARCHAR(255) NOT NULL UNIQUE,
+  password_hash VARCHAR(255) NOT NULL,
+  role VARCHAR(20) NOT NULL CHECK (role IN ('donor', 'claimant')),
+  created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE IF NOT EXISTS foods (
+  id SERIAL PRIMARY KEY,
+  title VARCHAR(200) NOT NULL,
+  quantity VARCHAR(100) NOT NULL,
+  location VARCHAR(255) NOT NULL,
+  expires_at TIMESTAMPTZ NOT NULL,
+  dietary JSONB NOT NULL DEFAULT '[]'::jsonb,
+  status VARCHAR(20) NOT NULL DEFAULT 'AVAILABLE'
+    CHECK (status IN ('AVAILABLE', 'CLAIMED', 'EXPIRED')),
+  donor_id INTEGER NOT NULL REFERENCES users(id) ON DELETE RESTRICT,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE IF NOT EXISTS claims (
+  id SERIAL PRIMARY KEY,
+  food_id INTEGER NOT NULL UNIQUE REFERENCES foods(id) ON DELETE CASCADE,
+  claimant_id INTEGER NOT NULL REFERENCES users(id) ON DELETE RESTRICT,
+  pickup_code VARCHAR(32) NOT NULL UNIQUE,
+  claimed_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX IF NOT EXISTS foods_status_expires_at_idx ON foods (status, expires_at);
+CREATE INDEX IF NOT EXISTS foods_donor_id_idx ON foods (donor_id);
+CREATE INDEX IF NOT EXISTS claims_claimant_id_idx ON claims (claimant_id);
+CREATE INDEX IF NOT EXISTS claims_claimed_at_idx ON claims (claimed_at DESC);
+
+CREATE OR REPLACE FUNCTION set_updated_at()
+RETURNS TRIGGER AS $$
+BEGIN
+  NEW.updated_at = CURRENT_TIMESTAMP;
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+DROP TRIGGER IF EXISTS users_set_updated_at ON users;
+CREATE TRIGGER users_set_updated_at
+BEFORE UPDATE ON users
+FOR EACH ROW EXECUTE FUNCTION set_updated_at();
+
+DROP TRIGGER IF EXISTS foods_set_updated_at ON foods;
+CREATE TRIGGER foods_set_updated_at
+BEFORE UPDATE ON foods
+FOR EACH ROW EXECUTE FUNCTION set_updated_at();
